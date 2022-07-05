@@ -4,8 +4,21 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const lodash = require('lodash');
-
 const posts = [];
+const mongoose = require("mongoose");
+
+// connecting MongoDB Atlas
+mongoose.connect('mongodb+srv://KaranjitSaha:Kota%402020@cluster0.iytsg.mongodb.net/blogDB').then(() => console.log("connected to DB successfully")).catch((err) => console.log(err));
+
+const postSchema=mongoose.Schema({
+ title:String,
+ body:String,
+});
+
+const Post=mongoose.model('Post',postSchema);
+
+
+
 
 const homeStartingContent = "Lacus vel facilisis volutpat est velit egestas dui id ornare. Semper auctor neque vitae tempus quam. Sit amet cursus sit amet dictum sit amet justo. Viverra tellus in hac habitasse. Imperdiet proin fermentum leo vel orci porta. Donec ultrices tincidunt arcu non sodales neque sodales ut. Mattis molestie a iaculis at erat pellentesque adipiscing. Magnis dis parturient montes nascetur ridiculus mus mauris vitae ultricies. Adipiscing elit ut aliquam purus sit amet luctus venenatis lectus. Ultrices vitae auctor eu augue ut lectus arcu bibendum at. Odio euismod lacinia at quis risus sed vulputate odio ut. Cursus mattis molestie a iaculis at erat pellentesque adipiscing.";
 
@@ -21,27 +34,51 @@ app.use(express.static("public"));
 
 app.get('/posts/:var', function (req, res) {
   let flag = false;
-  posts.forEach(function (post) {
-    if (lodash.lowerCase(post.title) === lodash.lowerCase(req.params.var)) {
-      flag = true;
-      let options = {
-        heading:post.title,
-        body:post.body};
-        res.render(__dirname + '/views/post.ejs', options)
-      console.log("Match Found!");
-      }
-    });
-    if(flag==false)
-      console.log("No Match Found!");
+  Post.find({},(err,docs)=>{
+    docs.forEach(function (post) {
+      if (lodash.lowerCase(post.title) === lodash.lowerCase(req.params.var)) {
+        flag = true;
+        let options = {
+          heading:post.title,
+          body:post.body};
+          res.render(__dirname + '/views/post.ejs', options)
+        console.log("Match Found!");
+        }
+      });
+      if(flag==false)
+        console.log("No Match Found!");
+  });
+  
 });
 
 app.get('/', function (req, res) {
-  const options = {
-    title:"Home",
-    body:homeStartingContent,
-    posts: posts
-  }
-  res.render(__dirname + '/views/home.ejs', options);
+  Post.findOne({title:"Home"},(err,doc)=>{
+    if(err){
+      console.log(err);
+    }
+    else if(!doc){
+      posts.push({
+        title:"Home",
+        body:homeStartingContent,
+      });
+      const post=new Post({
+        title:"Home",
+        body:homeStartingContent,
+      });
+      post.save();
+    }
+    else{
+      Post.find({},(err,docs)=>{
+        const options = {
+          posts: docs,
+        }
+        res.render(__dirname + '/views/home.ejs', options);
+      });
+    }
+  });
+  
+  
+  // res.render(__dirname + '/views/home.ejs', options);
 });
 
 app.get('/about', function (req, res) {
@@ -64,24 +101,17 @@ app.get('/compose', function (req, res) {
 });
 
 app.post('/compose', function (req, res) {
-  const post = {
+  const post=new Post({
     title: req.body.Title,
     body: req.body.Post,
-  };
-  posts.push(post);
-  res.redirect('/');
+  });
+  post.save((err)=>{
+    if(!err){
+      res.redirect('/');
+    }
+  });
+  
 });
-
-
-
-
-
-
-
-
-
-
-
 
 
 
